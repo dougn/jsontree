@@ -1,0 +1,10 @@
+jsontree.egg-info
+build
+dist
+docs/_build
+.DS_Store
+*.pyc
+*.pyo
+*.egg
+.tox
+tests/*.output
