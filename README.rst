@@ -2,7 +2,7 @@
  jsontree -- 
 =======================================================
 
-.. note:: Travis integration TBD
+*Travis integration TBD*
 
 jsontree is a simple module for quickly building manipulating and modifying
 rich json data in python.
@@ -12,7 +12,7 @@ Documentation
 
 TBD
 
-.. code-block:: python
+::
 
     import jsontree
     data = jsontree.jsontree()
