@@ -1,6 +1,8 @@
+commit.txt
 jsontree.egg-info
 build
 dist
+env
 docs/_build
 .DS_Store
 *.pyc
