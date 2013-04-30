@@ -7,20 +7,49 @@ import json
 import json.scanner
 import re
 
-__version__ = [0,1,0]
+__version__ = [0,2,0]
 __version_string__ = '.'.join(str(x) for x in __version__)
 
 __author__ = 'Doug Napoleone'
 __email__ = 'doug.napoleone+jsontree@gmail.com'
 
-# ISO date example: 2013-04-29T22:45:35.294303
+# ISO/UTC date examples:
+#    2013-04-29T22:45:35.294303Z
+#    2013-04-29T22:45:35.294303
+#    2013-04-29 22:45:35
+#    2013-04-29T22:45:35.4361-0400
+#    2013-04-29T22:45:35.4361-04:00
 _datetime_iso_re = re.compile(
-    r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,7})?Z?')
+    r'^(?P<parsable>\d{4}-\d{2}-\d{2}(?P<T>[ T])\d{2}:\d{2}:\d{2}'
+    r'(?P<f>\.\d{1,7})?)(?P<z>[-+]\d{2}\:?\d{2})?(?P<Z>Z)?')
 
-# Future: support UTC formatted datetime string from javascript libraries
-_datetime_utc_re = re.compile(
-    r'^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$')
+_date = "%Y-%m-%d"
+_time = "%H:%M:%S"
+_f = '.%f'
+_z = '%z'
 
+class _FixedTzOffset(datetime.tzinfo):
+    def __init__(self, offset_str):
+        hours = int(offset_str[1:3], 10)
+        mins = int(offset_str[-2:], 10)
+        if offset_str[0] == '-':
+            hours = -hours
+            mins = -mins
+        self.__offset = datetime.timedelta(hours=hours,
+                                           minutes=mins)
+        self.__dst = datetime.timedelta(hours=hours-1,
+                                        minutes=mins)
+        self.__name = ''
+
+    def utcoffset(self, dt):
+        return self.__offset
+
+    def tzname(self, dt):
+        return self.__name
+
+    def dst(self, dt):
+        return self.__dst
+    
 class jsontree(collections.defaultdict):
     """Default dictionary where keys can be accessed as attributes and
     new entries recursively default to be this class. This means the following
@@ -70,14 +99,19 @@ class JSONTreeDecoder(json.JSONDecoder):
         return jsontree(result[0]), result[1]
     def _parse_string(self, *args, **kwdargs):
         value, idx = self.__parse_string(*args, **kwdargs)
-        if _datetime_iso_re.match(value):
+        match = _datetime_iso_re.match(value)
+        if match:
+            gd = match.groupdict()
+            T = gd['T']
+            strptime = _date + T + _time
+            if gd['f']:
+                strptime += '.%f'
+            if gd['Z']:
+                strptime += 'Z'
             try:
-                if value.endswith('Z'):
-                    result = datetime.datetime.strptime(
-                        value, "%Y-%m-%dT%H:%M:%S.%fZ")
-                else:
-                    result = datetime.datetime.strptime(
-                        value, "%Y-%m-%dT%H:%M:%S.%f")
+                result = datetime.datetime.strptime(gd['parsable'], strptime)
+                if gd['z']:
+                    result = result.replace(tzinfo=_FixedTzOffset(gd['z']))
                 return result, idx
             except ValueError:
                 return value, idx
