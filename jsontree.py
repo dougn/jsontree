@@ -7,7 +7,7 @@ import json
 import json.scanner
 import re
 
-__version__ = [0,2,0]
+__version__ = [0,2,1]
 __version_string__ = '.'.join(str(x) for x in __version__)
 
 __author__ = 'Doug Napoleone'
@@ -159,6 +159,6 @@ def loads(s, encoding=None, cls=JSONTreeDecoder, object_hook=None,
     """JSON load from string function that defaults the loading class to be
     JSONTreeDecoder
     """
-    return json.load(s, encoding, cls, object_hook,
+    return json.loads(s, encoding, cls, object_hook,
          parse_float, parse_int, parse_constant,
          object_pairs_hook, **kargs)
