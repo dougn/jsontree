@@ -7,7 +7,7 @@ import json
 import json.scanner
 import re
 
-__version__ = [0,2,1]
+__version__ = [0,3,0]
 __version_string__ = '.'.join(str(x) for x in __version__)
 
 __author__ = 'Doug Napoleone'
@@ -56,8 +56,8 @@ class jsontree(collections.defaultdict):
     code is valid:
     
     >>> mytree = jsontree()
-    >>> mytree.something.else=3
-    >>> mytree['something']['else'] == 3
+    >>> mytree.something.there = 3
+    >>> mytree['something']['there'] == 3
     True
     """
     def __init__(self, *args, **kwdargs):
@@ -73,6 +73,98 @@ class jsontree(collections.defaultdict):
         self[name] = value
         return value
 
+def mapped_jsontree_class(mapping):
+    """Return a class which is a jsontree, but with a supplied attribute name
+    mapping. The mapping argument can be a mapping object
+    (dict, jsontree, etc.) or it can be a callable which takes a single
+    argument (the attribute name), and returns a new name.
+    
+    This is useful in situations where you have a jsontree with keys that are
+    not valid python attribute names, to simplify communication with a client
+    library, or allow for configurable names.
+    
+    For example:
+    
+    >>> numjt = mapped_jsontree_class(dict(one='1', two='2', three='3'))
+    >>> number = numjt()
+    >>> number.one = 'something'
+    >>> number
+    defaultdict(<class 'jsontree.mapped_jsontree'>, {'1': 'something'})
+    
+    This is very useful for abstracting field names that may change between
+    a development sandbox and production environment. Both FogBugz and Jira
+    bug trackers have custom fields with dynamically generated values. These
+    field names can be abstracted out into a configruation mapping, and the
+    jsontree code can be standardized.
+    
+    This can also be iseful for JavaScript API's (PHPCake) which insist on
+    having spaces in some key names. A function can be supplied which maps
+    all '_'s in the attribute name to spaces:
+    
+    >>> spacify = lambda name: name.replace('_', ' ')
+    >>> spacemapped = mapped_jsontree_class(spacify)
+    >>> sm = spacemapped()
+    >>> sm.hello_there = 5
+    >>> sm.hello_there
+    5
+    >>> sm.keys()
+    ['hello there']
+    
+        
+    This will also work with non-string keys for translating from libraries
+    that use object keys in python over to string versions of the keys in JSON
+    
+    >>> numjt = mapped_jsontree_class(dict(one=1, two=2))
+    >>> number = numjt()
+    >>> number.one = 'something'
+    >>> number
+    defaultdict(<class 'jsontree.mapped_jsontree'>, {1: 'something'})
+    >>> numjt_as_text = mapped_jsontree_class(dict(one='1', two='2'))
+    >>> dumped_number = dumps(number)
+    >>> loaded_number = loads(dumped_number, jsontreecls=numjt_as_text)
+    >>> loaded_number.one
+    'something'
+    >>> loaded_number
+    defaultdict(<class 'jsontree.mapped_jsontree'>, {'1': 'something'})
+    
+    """
+    mapper = mapping
+    if not callable(mapping):
+        if not isinstance(mapping, collections.Mapping):
+            raise TypeError, ("Argument mapping is not collable or an instance "
+                              "of collections.Mapping")
+        mapper = lambda name: mapping.get(name, name)
+    class mapped_jsontree(collections.defaultdict):
+        def __init__(self, *args, **kwdargs):
+            super(mapped_jsontree, self).__init__(mapped_jsontree, *args, **kwdargs)
+        def __getattribute__(self, name):
+            mapped_name = mapper(name)
+            if not isinstance(mapped_name, basestring):
+                return self[mapped_name]
+            try:
+                return object.__getattribute__(self, mapped_name)
+            except AttributeError:
+                return self[mapped_name]
+        def __setattr__(self, name, value):
+            mapped_name = mapper(name)
+            self[mapped_name] = value
+            return value
+    return mapped_jsontree
+
+def mapped_jsontree(mapping, *args, **kwdargs):
+    """Helper function that calls mapped_jsontree_class, and passing the
+    rest of the arguments to the constructor of the new class.
+    
+    >>> number = mapped_jsontree(dict(one='1', two='2', three='3', four='4'),
+    ...                          {'1': 'something', '2': 'hello'})
+    >>> number.two
+    'hello'
+    >>> number.items()
+    [('1', 'something'), ('2', 'hello')]
+    
+    """
+    return mapped_jsontree_class(mapping)(*args, **kwdargs)
+    
 class JSONTreeEncoder(json.JSONEncoder):
     """JSON encoder class that serializes out jsontree object structures and
     datetime objects into ISO strings.
@@ -88,15 +180,19 @@ class JSONTreeDecoder(json.JSONDecoder):
     and building datetime objects from strings with the ISO datetime format.
     """
     def __init__(self, *args, **kwdargs):
+        jsontreecls = jsontree
+        if 'jsontreecls' in kwdargs:
+            jsontreecls = kwdargs.pop('jsontreecls')
         super(JSONTreeDecoder, self).__init__(*args, **kwdargs)
         self.__parse_object = self.parse_object
         self.__parse_string = self.parse_string
         self.parse_object = self._parse_object
         self.parse_string = self._parse_string
         self.scan_once = json.scanner.py_make_scanner(self)
+        self.jsontreecls = jsontreecls
     def _parse_object(self, *args, **kwdargs):
         result = self.__parse_object(*args, **kwdargs)
-        return jsontree(result[0]), result[1]
+        return self.jsontreecls(result[0]), result[1]
     def _parse_string(self, *args, **kwdargs):
         value, idx = self.__parse_string(*args, **kwdargs)
         match = _datetime_iso_re.match(value)
@@ -117,31 +213,30 @@ class JSONTreeDecoder(json.JSONDecoder):
                 return value, idx
         return value, idx
 
-def clone(root):
+def clone(root, jsontreecls=jsontree):
     """Clone an object by first searializing out and then loading it back in.
     """
     return json.loads(json.dumps(root, cls=JSONTreeEncoder),
-                      cls=JSONTreeDecoder)
+                      cls=JSONTreeDecoder, jsontreecls=jsontreecls)
     
 def dump(obj, fp, skipkeys=False, ensure_ascii=True, check_circular=True,
          allow_nan=True, cls=JSONTreeEncoder, indent=None, separators=None,
-         encoding="utf-8", default=None, sort_keys=False, **kw):
+         encoding="utf-8", default=None, **kw):
     """JSON serialize to file function that defaults the encoding class to be
     JSONTreeEncoder
     """
     return json.dump(obj, fp, skipkeys, ensure_ascii, check_circular,
                      allow_nan, cls, indent, separators, encoding, default,
-                     sort_keys, **kw)
+                     **kw)
 
 def dumps(obj, skipkeys=False, ensure_ascii=True, check_circular=True,
-          allow_nan=True, cls=JSONTreeEncoder, indent=None, separators=None,
-          encoding="utf-8", default=None, sort_keys=False, **kw):
+          allow_nan=True, cls=None, indent=None, separators=None,
+          encoding='utf-8', default=None, **kw):
     """JSON serialize to string function that defaults the encoding class to be
     JSONTreeEncoder
     """
     return json.dumps(obj, skipkeys, ensure_ascii, check_circular, allow_nan,
-                      cls, indent, separators, encoding, default, sort_keys,
-                      **kw)
+                      cls, indent, separators, encoding, default, **kw)
 
 def load(fp, encoding=None, cls=JSONTreeDecoder, object_hook=None,
          parse_float=None, parse_int=None, parse_constant=None,

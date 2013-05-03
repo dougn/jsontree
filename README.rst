@@ -19,7 +19,7 @@ datetime objects.
     data.username = 'doug'
     data.meta.date = datetime.datetime.now()
     data.somethingelse = [1,2,3]
-    
+
     data['username'] == 'doug'
     
     ser = jsontree.dumps(data)

@@ -1,7 +1,7 @@
 
 
 
-.PHONY: help clean build
+.PHONY: help clean build test
 
 help:
 	@echo "Please use \`make <target>' where <target> is one of"
@@ -15,7 +15,10 @@ clean:
 	cd docs && make clean
 	rm -f commit.txt
 
-build:
+test:
+	cd docs && make doctest
+	
+build: test
 	python setup.py sdist build_sphinx
 
 release: build
