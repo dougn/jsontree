@@ -7,7 +7,7 @@ import json
 import json.scanner
 import re
 
-__version__ = [0,3,0]
+__version__ = [0,4,0]
 __version_string__ = '.'.join(str(x) for x in __version__)
 
 __author__ = 'Doug Napoleone'
@@ -49,6 +49,28 @@ class _FixedTzOffset(datetime.tzinfo):
 
     def dst(self, dt):
         return self.__dst
+
+def _datetimedecoder(dtstr):
+    match = _datetime_iso_re.match(dtstr)
+    if match:
+        gd = match.groupdict()
+        T = gd['T']
+        strptime = _date + T + _time
+        if gd['f']:
+            strptime += '.%f'
+        if gd['Z']:
+            strptime += 'Z'
+        try:
+            result = datetime.datetime.strptime(gd['parsable'], strptime)
+            if gd['z']:
+                result = result.replace(tzinfo=_FixedTzOffset(gd['z']))
+            return result
+        except ValueError:
+            return dtstr
+    return dtstr
+
+def _datetimeencoder(dtobj):
+    return dtobj.isoformat()
     
 class jsontree(collections.defaultdict):
     """Default dictionary where keys can be accessed as attributes and
@@ -169,9 +191,14 @@ class JSONTreeEncoder(json.JSONEncoder):
     """JSON encoder class that serializes out jsontree object structures and
     datetime objects into ISO strings.
     """
+    def __init__(self, *args, **kwdargs):
+        if 'datetimeencoder' in kwdargs:
+            datetimeencoder = kwdargs.pop('datetimeencoder')
+        super(JSONTreeEncoder, self).__init__(*args, **kwdargs)
+        self.__datetimeencoder = datetimeencoder
     def default(self, obj):
         if isinstance(obj, datetime.datetime):
-            return obj.isoformat()
+            return self.__datetimeencoder(obj)
         else:
             return super(JSONTreeEncoder, self).default(obj)
 
@@ -181,43 +208,35 @@ class JSONTreeDecoder(json.JSONDecoder):
     """
     def __init__(self, *args, **kwdargs):
         jsontreecls = jsontree
+        datetimedecoder = _datetimedecoder
         if 'jsontreecls' in kwdargs:
             jsontreecls = kwdargs.pop('jsontreecls')
+        if 'datetimedecoder' in kwdargs:
+            datetimedecoder = kwdargs.pop('datetimedecoder')
         super(JSONTreeDecoder, self).__init__(*args, **kwdargs)
         self.__parse_object = self.parse_object
         self.__parse_string = self.parse_string
         self.parse_object = self._parse_object
         self.parse_string = self._parse_string
         self.scan_once = json.scanner.py_make_scanner(self)
-        self.jsontreecls = jsontreecls
+        self.__jsontreecls = jsontreecls
+        self.__datetimedecoder = datetimedecoder
     def _parse_object(self, *args, **kwdargs):
         result = self.__parse_object(*args, **kwdargs)
-        return self.jsontreecls(result[0]), result[1]
+        return self.__jsontreecls(result[0]), result[1]
     def _parse_string(self, *args, **kwdargs):
         value, idx = self.__parse_string(*args, **kwdargs)
-        match = _datetime_iso_re.match(value)
-        if match:
-            gd = match.groupdict()
-            T = gd['T']
-            strptime = _date + T + _time
-            if gd['f']:
-                strptime += '.%f'
-            if gd['Z']:
-                strptime += 'Z'
-            try:
-                result = datetime.datetime.strptime(gd['parsable'], strptime)
-                if gd['z']:
-                    result = result.replace(tzinfo=_FixedTzOffset(gd['z']))
-                return result, idx
-            except ValueError:
-                return value, idx
+        value = self.__datetimedecoder(value)
         return value, idx
 
-def clone(root, jsontreecls=jsontree):
+def clone(root, jsontreecls=jsontree, datetimeencoder=_datetimeencoder,
+          datetimedecoder=_datetimedecoder):
     """Clone an object by first searializing out and then loading it back in.
     """
-    return json.loads(json.dumps(root, cls=JSONTreeEncoder),
-                      cls=JSONTreeDecoder, jsontreecls=jsontreecls)
+    return json.loads(json.dumps(root, cls=JSONTreeEncoder,
+                                 datetimeencoder=datetimeencoder),
+                      cls=JSONTreeDecoder, jsontreecls=jsontreecls,
+                      datetimedecoder=datetimedecoder)
     
 def dump(obj, fp, skipkeys=False, ensure_ascii=True, check_circular=True,
          allow_nan=True, cls=JSONTreeEncoder, indent=None, separators=None,
