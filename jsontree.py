@@ -7,7 +7,7 @@ import json
 import json.scanner
 import re
 
-__version__ = [0,4,0]
+__version__ = (0,4,2)
 __version_string__ = '.'.join(str(x) for x in __version__)
 
 __author__ = 'Doug Napoleone'
@@ -192,6 +192,7 @@ class JSONTreeEncoder(json.JSONEncoder):
     datetime objects into ISO strings.
     """
     def __init__(self, *args, **kwdargs):
+        datetimeencoder = _datetimeencoder
         if 'datetimeencoder' in kwdargs:
             datetimeencoder = kwdargs.pop('datetimeencoder')
         super(JSONTreeEncoder, self).__init__(*args, **kwdargs)
