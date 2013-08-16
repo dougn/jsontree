@@ -7,7 +7,7 @@ import json
 import json.scanner
 import re
 
-__version__ = (0,4,2)
+__version__ = (0,4,3)
 __version_string__ = '.'.join(str(x) for x in __version__)
 
 __author__ = 'Doug Napoleone'
@@ -250,7 +250,7 @@ def dump(obj, fp, skipkeys=False, ensure_ascii=True, check_circular=True,
                      **kw)
 
 def dumps(obj, skipkeys=False, ensure_ascii=True, check_circular=True,
-          allow_nan=True, cls=None, indent=None, separators=None,
+          allow_nan=True, cls=JSONTreeEncoder, indent=None, separators=None,
           encoding='utf-8', default=None, **kw):
     """JSON serialize to string function that defaults the encoding class to be
     JSONTreeEncoder
