@@ -153,7 +153,7 @@ def mapped_jsontree_class(mapping):
     mapper = mapping
     if not callable(mapping):
         if not isinstance(mapping, collections.Mapping):
-            raise TypeError, ("Argument mapping is not collable or an instance "
+            raise TypeError("Argument mapping is not collable or an instance "
                               "of collections.Mapping")
         mapper = lambda name: mapping.get(name, name)
     class mapped_jsontree(collections.defaultdict):
