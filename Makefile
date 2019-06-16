@@ -13,14 +13,14 @@ help:
 clean:
 	python setup.py clean
 	cd docs && make clean
-	rm -f commit.txt
+	rm -rf build dist __pycache__ *.pyc *.egg-info
 
 test:
 	cd docs && make doctest
 	
 build: test
 	python setup.py build_sphinx bdist_wheel --universal
+	ls dist/*
 
 release: build
-	python setup.py upload_sphinx
 	twine upload dist/jsontree*.whl

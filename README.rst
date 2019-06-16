@@ -26,4 +26,8 @@ datetime objects.
     backagain = jsontree.loads(ser)
     cloned = jsontree.clone(data)
     
-    
+Project Links:
+
+* `Documentation <https://jsontree.readthedocs.io/en/latest/>`_
+* `PyPi <https://pypi.org/project/jsontree/>`_
+* `GitHub <https://github.com/dougn/jsontree>`_
