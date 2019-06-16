@@ -31,7 +31,7 @@ import jsontree
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.doctest', 'sphinx.ext.viewcode']
 
 # Extension options
-doctest_test_doctest_blocks = True
+doctest_test_doctest_blocks = 'default'
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

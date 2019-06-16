@@ -8,11 +8,15 @@ import json.scanner
 import re
 import sys
 
-__version__ = (0,5,0)
+__version__ = (0,5,1)
 __version_string__ = '.'.join(str(x) for x in __version__)
 
 __author__ = 'Doug Napoleone'
 __email__ = 'doug.napoleone+jsontree@gmail.com'
+
+
+if sys.version_info.major > 2 :
+    basestring = str
 
 # ISO/UTC date examples:
 #    2013-04-29T22:45:35.294303Z
@@ -111,8 +115,8 @@ def mapped_jsontree_class(mapping):
     >>> numjt = mapped_jsontree_class(dict(one='1', two='2', three='3'))
     >>> number = numjt()
     >>> number.one = 'something'
-    >>> number
-    defaultdict(<class 'jsontree.mapped_jsontree'>, {'1': 'something'})
+    >>> dict(number)
+    {'1': 'something'}
     
     This is very useful for abstracting field names that may change between
     a development sandbox and production environment. Both FogBugz and Jira
@@ -130,7 +134,7 @@ def mapped_jsontree_class(mapping):
     >>> sm.hello_there = 5
     >>> sm.hello_there
     5
-    >>> sm.keys()
+    >>> list(sm.keys())
     ['hello there']
     
         
@@ -140,15 +144,15 @@ def mapped_jsontree_class(mapping):
     >>> numjt = mapped_jsontree_class(dict(one=1, two=2))
     >>> number = numjt()
     >>> number.one = 'something'
-    >>> number
-    defaultdict(<class 'jsontree.mapped_jsontree'>, {1: 'something'})
+    >>> dict(number)
+    {1: 'something'}
     >>> numjt_as_text = mapped_jsontree_class(dict(one='1', two='2'))
     >>> dumped_number = dumps(number)
     >>> loaded_number = loads(dumped_number, jsontreecls=numjt_as_text)
-    >>> loaded_number.one
+    >>> str(loaded_number.one)
     'something'
-    >>> loaded_number
-    defaultdict(<class 'jsontree.mapped_jsontree'>, {'1': 'something'})
+    >>> repr(dict(loaded_number)).replace('u', '') # cheat the python2 tests
+    "{'1': 'something'}"
     
     """
     mapper = mapping
@@ -182,7 +186,7 @@ def mapped_jsontree(mapping, *args, **kwdargs):
     ...                          {'1': 'something', '2': 'hello'})
     >>> number.two
     'hello'
-    >>> number.items()
+    >>> list(number.items())
     [('1', 'something'), ('2', 'hello')]
     
     """

@@ -19,9 +19,8 @@ test:
 	cd docs && make doctest
 	
 build: test
-	python setup.py sdist build_sphinx
+	python setup.py build_sphinx bdist_wheel --universal
 
 release: build
-	touch commit.txt
-	git commit -a -F commit.txt -e && git push
-	python setup.py upload upload_sphinx
+	python setup.py upload_sphinx
+	twine upload dist/jsontree*.whl
