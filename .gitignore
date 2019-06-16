@@ -8,5 +8,6 @@ docs/_build
 *.pyc
 *.pyo
 *.egg
+*.env
 .tox
 tests/*.output

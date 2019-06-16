@@ -6,8 +6,9 @@ import datetime
 import json
 import json.scanner
 import re
+import sys
 
-__version__ = (0,4,3)
+__version__ = (0,5,0)
 __version_string__ = '.'.join(str(x) for x in __version__)
 
 __author__ = 'Doug Napoleone'
@@ -241,22 +242,34 @@ def clone(root, jsontreecls=jsontree, datetimeencoder=_datetimeencoder,
     
 def dump(obj, fp, skipkeys=False, ensure_ascii=True, check_circular=True,
          allow_nan=True, cls=JSONTreeEncoder, indent=None, separators=None,
-         encoding="utf-8", default=None, **kw):
+         encoding="utf-8", default=None, sort_keys=False, **kargs):
     """JSON serialize to file function that defaults the encoding class to be
     JSONTreeEncoder
     """
-    return json.dump(obj, fp, skipkeys, ensure_ascii, check_circular,
-                     allow_nan, cls, indent, separators, encoding, default,
-                     **kw)
+    if sys.version_info.major == 2:
+        kargs['encoding'] = encoding
+    if sys.version_info.major > 2 :
+        kargs['sort_keys'] = sort_keys
+    kargs['default'] = default
+    return json.dump(obj, fp, skipkeys=skipkeys, ensure_ascii=ensure_ascii, 
+                     check_circular=check_circular, allow_nan=allow_nan,
+                     cls=cls, indent=indent, separators=separators, **kargs)
 
 def dumps(obj, skipkeys=False, ensure_ascii=True, check_circular=True,
           allow_nan=True, cls=JSONTreeEncoder, indent=None, separators=None,
-          encoding='utf-8', default=None, **kw):
+          encoding='utf-8', default=None, sort_keys=False, **kargs):
     """JSON serialize to string function that defaults the encoding class to be
     JSONTreeEncoder
     """
-    return json.dumps(obj, skipkeys, ensure_ascii, check_circular, allow_nan,
-                      cls, indent, separators, encoding, default, **kw)
+
+    if sys.version_info.major == 2:
+        kargs['encoding'] = encoding
+    if sys.version_info.major > 2 :
+        kargs['sort_keys'] = sort_keys
+    kargs['default'] = default
+    return json.dumps(obj, skipkeys=skipkeys, ensure_ascii=ensure_ascii, 
+                      check_circular=check_circular, allow_nan=allow_nan,
+                      cls=cls, indent=indent, separators=separators, **kargs)
 
 def load(fp, encoding=None, cls=JSONTreeDecoder, object_hook=None,
          parse_float=None, parse_int=None, parse_constant=None,
@@ -264,9 +277,11 @@ def load(fp, encoding=None, cls=JSONTreeDecoder, object_hook=None,
     """JSON load from file function that defaults the loading class to be
     JSONTreeDecoder
     """
-    return json.load(fp, encoding, cls, object_hook,
-         parse_float, parse_int, parse_constant,
-         object_pairs_hook, **kargs)
+    if sys.version_info.major == 2:
+        kargs['encoding'] = encoding
+    return json.load(fp, cls=cls, object_hook=object_hook,
+         parse_float=parse_float, parse_int=parse_int, parse_constant=parse_constant,
+         object_pairs_hook=object_pairs_hook, **kargs)
     
 def loads(s, encoding=None, cls=JSONTreeDecoder, object_hook=None,
          parse_float=None, parse_int=None, parse_constant=None,
@@ -274,6 +289,6 @@ def loads(s, encoding=None, cls=JSONTreeDecoder, object_hook=None,
     """JSON load from string function that defaults the loading class to be
     JSONTreeDecoder
     """
-    return json.loads(s, encoding, cls, object_hook,
-         parse_float, parse_int, parse_constant,
-         object_pairs_hook, **kargs)
+    return json.loads(s, encoding=encoding, cls=cls, object_hook=object_hook,
+         parse_float=parse_float, parse_int=parse_int, parse_constant=parse_constant,
+         object_pairs_hook=object_pairs_hook, **kargs)
